@@ -1,7 +1,7 @@
 const CAPS = {
   insurance: 622,
   tax: 600,
-  amex: 2000,
+  spending: 1600,
   rent: 1500,
   ira: 200
 };
@@ -20,7 +20,7 @@ function getMonthTotals() {
   let totals = {
     insurance: 0,
     tax: 0,
-    amex: 0,
+    spending: 0,
     rent: 0,
     ira: 0,
     spain: 0
@@ -31,7 +31,7 @@ function getMonthTotals() {
     if (d.getMonth() === m && d.getFullYear() === y) {
       totals.insurance += t.insurance;
       totals.tax += t.tax;
-      totals.amex += t.amex;
+      totals.spending += t.spending;
       totals.rent += t.rent;
       totals.ira += t.ira;
       totals.spain += t.spain || 0;
@@ -49,13 +49,14 @@ function addTip() {
   if (isNaN(val)) return;
 
   // STEP 1: pure percentage split
+  // amex retired -> replaced with spending (43%, combines former repay-self + spending)
   let entry = {
     amount: val,
-    insurance: val * 0.12,
-    tax: val * 0.12,
-    amex: val * 0.40,
-    rent: val * 0.30,
-    ira: val * 0.04,
+    insurance: val * 0.121484,
+    tax: val * 0.117188,
+    spending: val * 0.3125,
+    rent: val * 0.292969,
+    ira: val * 0.039063,
     spain: 0,
     time: new Date().toISOString()
   };
@@ -64,7 +65,7 @@ function addTip() {
   const totals = getMonthTotals();
   let overflow = 0;
 
-  const order = ["insurance", "tax", "amex", "rent", "ira"];
+  const order = ["insurance", "tax", "spending", "rent", "ira"];
 
   for (let key of order) {
     const capRemaining = CAPS[key] - (totals[key] || 0);
@@ -75,7 +76,7 @@ function addTip() {
     }
   }
 
-  // STEP 3: overflow → Spain
+  // STEP 3: overflow → Spain (vacation fund)
   entry.spain = overflow;
 
   tips.push(entry);
@@ -109,7 +110,7 @@ function update() {
         <small>
           Insurance: $${t.insurance.toFixed(2)} |
           Taxes: $${t.tax.toFixed(2)} |
-          Amex: $${t.amex.toFixed(2)} |
+          Spending: $${t.spending.toFixed(2)} |
           Rent: $${t.rent.toFixed(2)} |
           IRA: $${t.ira.toFixed(2)} |
           Spain: $${t.spain.toFixed(2)}
@@ -154,7 +155,7 @@ function renderProgress() {
 
   html += `
     <div style="margin-top:16px;">
-      <strong>Spain Fund</strong> $${(totals.spain || 0).toFixed(2)}
+      <strong>Spain Fund (Vacation)</strong> $${(totals.spain || 0).toFixed(2)}
     </div>
   `;
 
@@ -214,7 +215,7 @@ function renderSpainFlow() {
   const html = `
     <div class="spain-glow"></div>
 
-    <h3 style="margin:0 0 8px 0;">Spain Overflow</h3>
+    <h3 style="margin:0 0 8px 0;">Spain Overflow (Vacation)</h3>
 
     <div style="font-size:14px; margin-bottom:6px; color:#aaa;">
       Unallocated: $${spain.toFixed(2)}
