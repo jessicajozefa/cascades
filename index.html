@@ -1,238 +1,119 @@
-const CAPS = {
-  insurance: 622,
-  tax: 600,
-  spending: 1600,
-  rent: 1650,
-  ira: 200
-};
 
-document.getElementById("stickySaveBtn")
+Claude finished the response
+Here's a rundown of realistic options, roughly from most to least convenient for a 3-day trip:
 
-let tips = JSON.parse(localStorage.getItem("tips") || "[]");
+Portable power bank (most practical for most people)
+A good 20,000-30,000 mAh power bank can typically charge a phone 4-6+ times, which should comfortably cover 3 days of moderate use. Charge it fully before you leave — this is genuinely the easiest, most reliable option if you don't already have solar gear.
 
-/* ---------------- MONTH TOTALS ---------------- */
+Solar charger/panel
+A portable solar panel (foldable ones are common, often 10-25 watts) paired with a power bank works well if you'll have decent sun exposure — you charge the power bank via solar during the day, then charge your phone off the bank as needed. More gear to carry, but sustainable if you're out longer than 3 days or want a backup to a power bank alone.
 
-function getMonthTotals() {
-  const now = new Date();
-  const m = now.getMonth();
-  const y = now.getFullYear();
+Car charger, if you're driving to the site and the car will be nearby
+A simple USB car charger lets you top off your phone anytime you're near your vehicle — worth doing once or twice over the weekend if the car's parked at your site the whole time.
 
-  let totals = {
-    insurance: 0,
-    tax: 0,
-    spending: 0,
-    rent: 0,
-    ira: 0,
-    spain: 0
-  };
+Battery-pack camping lanterns/multi-tools
+Some camping lanterns and multi-tools now include a USB charging port built in, which can serve as a backup if you're already bringing one for light.
 
-  tips.forEach(t => {
-    const d = new Date(t.time);
-    if (d.getMonth() === m && d.getFullYear() === y) {
-      totals.insurance += t.insurance;
-      totals.tax += t.tax;
-      totals.spending += t.spending;
-      totals.rent += t.rent;
-      totals.ira += t.ira;
-      totals.spain += t.spain || 0;
-    }
-  });
+Practical tips to stretch your phone's battery, regardless of what you bring:
 
-  return totals;
-}
+Turn on airplane mode or low power mode whenever you don't need signal — searching for weak signal drains battery fast
+Turn off location services and background app refresh
+Lower screen brightness
+Bottom line for a 3-day trip: a single well-charged 20,000+ mAh power bank is usually enough on its own without needing solar gear, unless you're worried about especially heavy phone use (photos, GPS navigation the whole time) or want backup in case the power bank runs low before you're back.
 
-/* ---------------- ADD TIP (CORE ENGINE) ---------------- */
+Do you already own a power bank, or would you need to grab one before the trip?
 
-function addTip() {
-  const input = document.getElementById("amount");
-  const val = parseFloat(input.value);
-  if (isNaN(val)) return;
+i nee done
 
-  // STEP 1: pure percentage split
-  // amex retired -> replaced with spending (43%, combines former repay-self + spending)
-  let entry = {
-    amount: val,
-    insurance: val * 0.133134,
-    tax: val * 0.128425,
-    spending: val * 0.342466,
-    rent: val * 0.353164,
-    ira: val * 0.042810,
-    spain: 0,
-    time: new Date().toISOString()
-  };
+Good — a single solid power bank should cover you comfortably for 3 days of normal use. If you're picking one up before you go, aim for something in the 20,000mAh range (gives you roughly 4-5 full phone charges) — that's a good balance of enough capacity without being bulky to pack.
 
-  // STEP 2: apply caps AFTER split
-  const totals = getMonthTotals();
-  let overflow = 0;
+A couple quick things worth doing before you leave: charge the power bank fully the night before, and bring the right cable for your phone (some power banks come with a cable, some don't). Beyond that, you're set — enjoy the trip.
 
-  const order = ["insurance", "tax", "spending", "rent", "ira"];
+ive got a sligth problem w my website
 
-  for (let key of order) {
-    const capRemaining = CAPS[key] - (totals[key] || 0);
+What's going on with it?
 
-    if (entry[key] > capRemaining) {
-      overflow += entry[key] - Math.max(0, capRemaining);
-      entry[key] = Math.max(0, capRemaining);
-    }
-  }
+https://jessicajozefa.github.io/vivamadrid/
 
-  // STEP 3: overflow → Spain (vacation fund)
-  entry.spain = overflow;
 
-  tips.push(entry);
-  localStorage.setItem("tips", JSON.stringify(tips));
+Fetched: https://jessicajozefa.github.io/vivamadrid/
+Fetched: https://jessicajozefa.github.io/vivamadrid/
+Found it — this is a real problem. The page is showing raw JavaScript code as plain text on the site, instead of running it as a script. That means app.js got pasted into index.html by mistake — likely somewhere along the way, the JS code ended up replacing your actual HTML file's content, rather than living in its own separate app.js file.
 
-  input.value = "";
-  update();
-}
+What's happening: the browser is trying to read pure JavaScript as if it were the page's HTML/text content, so instead of a working app, you're seeing the literal code printed on the page.
 
-/* ---------------- DELETE LAST ---------------- */
+The fix: you need to check your GitHub repo and confirm:
 
-function deleteLast() {
-  if (tips.length === 0) return;
+index.html contains the actual HTML structure (the <!DOCTYPE html>, the <div class="app">, etc.) — not JavaScript
+app.js contains the JavaScript code (the const CAPS = {...}, functions, etc.) — this is where that code you're seeing should live
+It sounds like these two got swapped or merged incorrectly at some point. Could you go into your GitHub repo, open index.html, and tell me what's actually in there right now? That'll confirm whether it got overwritten with the JS code, or something else is going on.
 
-  tips.pop();
-  localStorage.setItem("tips", JSON.stringify(tips));
-  update();
-}
+this is the index
 
-/* ---------------- UI ---------------- */
+I don't see the actual content in your message — could you paste what's currently inside your index.html file on GitHub? Once I see what's actually there, I can tell you exactly what's wrong and how to fix it.
 
-function update() {
-  const total = tips.reduce((s, t) => s + t.amount, 0);
 
-  let html = "";
+const CAPS = { insurance: 622, tax: 600, spending: 1600, rent: 1650, ira: 200 }; document.getElementById("stickySaveBtn") let tips = JSON.parse(localStorage.getItem("tips") || "[]"); /* ---------------- MONTH TOTALS ---------------- */ function getMonthTotals() { const now = new Date
 
-  tips.slice().reverse().forEach(t => {
-    html += `
-      <div style="padding:10px;border-bottom:1px solid #eee;">
-        <b>$${t.amount.toFixed(2)}</b><br/>
-        <small>
-          Insurance: $${t.insurance.toFixed(2)} |
-          Taxes: $${t.tax.toFixed(2)} |
-          Spending: $${t.spending.toFixed(2)} |
-          Rent: $${t.rent.toFixed(2)} |
-          IRA: $${t.ira.toFixed(2)} |
-          Spain: $${t.spain.toFixed(2)}
-        </small>
-      </div>
-    `;
-  });
+pasted
 
-  document.getElementById("result").innerHTML = `
-    <h2>Total: $${total.toFixed(2)}</h2>
-    <hr/>
-    ${html || "No entries yet"}
-  `;
+That confirms it exactly — index.html currently contains the JavaScript code (all the const CAPS, function addTip(), etc.) instead of the actual HTML page structure. Somewhere along the way, the JS got pasted into the wrong file, overwriting your real index.html.
 
-  renderProgress();
-}
+Here's the fix — you need to replace the entire contents of index.html with the correct HTML code (not JavaScript):
 
-/* ---------------- PROGRESS ---------------- */
+html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cascades</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <h1>CASCADES</h1>
+  <p>Pennies with a purpose. Every dollar has a destination.</p>
+  <div class="input-card">
+    <input id="amount" type="number" placeholder="Enter tip" />
+    <button id="saveBtn">SAVE</button>
+    <button id="deleteLast">DELETE LAST</button>
+  </div>
+  <div class="summary">
+    <h2>Total</h2>
+    <div id="result"></div>
+  </div>
+  <div id="spainFlow"></div>
+  <hr>
+  <h2>This Month</h2>
+  <div id="progress"></div>
+  <div class="controls">
+    <button id="resetMonth">Reset Month</button>
+    <button id="resetAll">Reset All</button>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
+Steps:
 
-function renderProgress() {
-  const totals = getMonthTotals();
+Go to your GitHub repo, open index.html, click the pencil (edit) icon
+Select everything currently in there (the JavaScript code) and delete it
+Paste the HTML code above in its place
+Commit the change
+Then, separately, double-check app.js still has the actual JavaScript code in it (the same content you just pasted to me) — since it's possible the JS got duplicated into index.html rather than moved, in which case app.js might still be fine. But worth opening app.js too and confirming it's not now empty or containing HTML instead.
 
-  let html = "";
+Want me to also give you the app.js code again to compare against what's currently there, just to be safe?
 
-  for (let key in CAPS) {
-    const used = totals[key] || 0;
-    const pct = Math.min(100, (used / CAPS[key]) * 100);
 
-    let color = "black";
-    if (pct > 80) color = "orange";
-    if (pct > 95) color = "red";
 
-    html += `
-      <div style="margin-bottom:12px;">
-        <strong>${key}</strong> $${used.toFixed(2)} / $${CAPS[key]}
-        <div style="background:#eee;height:10px;border-radius:5px;">
-          <div style="width:${pct}%;height:10px;background:${color};"></div>
-        </div>
-      </div>
-    `;
-  }
 
-  html += `
-    <div style="margin-top:16px;">
-      <strong>Spain Fund (Vacation)</strong> $${(totals.spain || 0).toFixed(2)}
-    </div>
-  `;
 
-  document.getElementById("progress").innerHTML = html;
-}
 
-/* ---------------- RESET ---------------- */
 
-function bindReset() {
-  const monthBtn = document.getElementById("resetMonth");
-  const allBtn = document.getElementById("resetAll");
+Claude is AI and can make mistakes. Please double-check responses.
 
-  if (monthBtn) {
-    monthBtn.onclick = () => {
-      const now = new Date();
-      const m = now.getMonth();
-      const y = now.getFullYear();
 
-      tips = tips.filter(t => {
-        const d = new Date(t.time);
-        return !(d.getMonth() === m && d.getFullYear() === y);
-      });
 
-      localStorage.setItem("tips", JSON.stringify(tips));
-      update();
-    };
-  }
 
-  if (allBtn) {
-    allBtn.onclick = () => {
-      tips = [];
-      localStorage.removeItem("tips");
-      update();
-    };
-  }
-}
 
-/* ---------------- INIT ---------------- */
-
-function init() {
-  document.getElementById("saveBtn").onclick = addTip;
-  document.getElementById("deleteLast").onclick = deleteLast;
-
-  bindReset();
-  update();
-}
-
-document.addEventListener("DOMContentLoaded", init);
-function renderSpainFlow() {
-  const el = document.getElementById("spainFlow");
-  if (!el) return;
-
-  const totals = getMonthTotals();
-
-  const spain = totals.spain || 0;
-
-  const html = `
-    <div class="spain-glow"></div>
-
-    <h3 style="margin:0 0 8px 0;">Spain Overflow (Vacation)</h3>
-
-    <div style="font-size:14px; margin-bottom:6px; color:#aaa;">
-      Unallocated: $${spain.toFixed(2)}
-    </div>
-
-    <div style="background:#222838; height:10px; border-radius:999px; overflow:hidden;">
-      <div class="spain-flow-bar" style="width:${Math.min(100, spain)}%"></div>
-    </div>
-  `;
-
-  el.innerHTML = html;
-}
-document.querySelectorAll(".category-chip").forEach(chip => {
-  chip.addEventListener("click", () => {
-    document.querySelectorAll(".category-chip")
-      .forEach(c => c.classList.remove("active"));
-
-    chip.classList.add("active");
-  });
-});
