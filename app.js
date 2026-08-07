@@ -40,12 +40,12 @@ function getMonthTotals() {
   tips.forEach(t => {
     const d = new Date(t.time);
     if (d.getMonth() === m && d.getFullYear() === y) {
-      totals.insurance += t.insurance;
-      totals.tax += t.tax;
-      totals.spending += t.spending;
-      totals.rent += t.rent;
-      totals.ira += t.ira;
-      totals.spain += t.spain || 0;
+      totals.insurance += Number(t.insurance) || 0;
+      totals.tax += Number(t.tax) || 0;
+      totals.spending += Number(t.spending) || 0;
+      totals.rent += Number(t.rent) || 0;
+      totals.ira += Number(t.ira) || 0;
+      totals.spain += Number(t.spain) || 0;
     }
   });
 
