@@ -74,6 +74,46 @@ function addTip() {
 
   let remaining = val;
 
+  const available = {};
+
+  for (let key in CAPS) {
+    available[key] = Math.max(0, CAPS[key] - totals[key]);
+  }
+
+  let totalNeeded = Object.values(available)
+    .reduce((sum, amount) => sum + amount, 0);
+
+  if (totalNeeded > 0) {
+    for (let key in available) {
+      let share = available[key] / totalNeeded;
+      let amount = Math.min(
+        remaining * share,
+        available[key]
+      );
+
+      entry[key] = +amount.toFixed(2);
+    }
+  }
+
+  let used =
+    entry.insurance +
+    entry.tax +
+    entry.spending +
+    entry.rent +
+    entry.ira;
+
+  entry.spain = +(val - used).toFixed(2);
+
+  tips.push(entry);
+
+  localStorage.setItem("tips", JSON.stringify(tips));
+
+  input.value = "";
+  update();
+}
+
+  let remaining = val;
+
   // STEP 1: cascade the deposit through each bucket in order,
   // filling each cap fully before spilling into the next
   for (let key of ORDER) {
