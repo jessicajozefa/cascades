@@ -10,7 +10,16 @@ const ORDER = ["insurance", "tax", "spending", "rent", "ira"];
 
 document.getElementById("stickySaveBtn")
 
-let tips = JSON.parse(localStorage.getItem("tips") || "[]");
+let tips = JSON.parse(localStorage.getItem("tips") || "[]").map(t => ({
+  amount: Number(t.amount) || 0,
+  insurance: Number(t.insurance) || 0,
+  tax: Number(t.tax) || 0,
+  spending: Number(t.spending) || 0,
+  rent: Number(t.rent) || 0,
+  ira: Number(t.ira) || 0,
+  spain: Number(t.spain) || 0,
+  time: t.time || new Date().toISOString()
+}));
 
 /* ---------------- MONTH TOTALS ---------------- */
 
