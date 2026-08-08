@@ -1,3 +1,4 @@
+```javascript
 const CAPS = {
   insurance: 622,
   tax: 600,
@@ -5,6 +6,9 @@ const CAPS = {
   rent: 1600,
   ira: 200
 };
+
+
+/* ---------------- LOAD SAVED TIPS ---------------- */
 
 let tips = JSON.parse(localStorage.getItem("tips") || "[]").map(t => ({
   amount: Number(t.amount) || 0,
@@ -17,6 +21,7 @@ let tips = JSON.parse(localStorage.getItem("tips") || "[]").map(t => ({
   time: t.time || new Date().toISOString()
 }));
 
+
 /* ---------------- MONTH TOTALS ---------------- */
 
 function getMonthTotals() {
@@ -24,7 +29,7 @@ function getMonthTotals() {
   const m = now.getMonth();
   const y = now.getFullYear();
 
-  let totals = {
+  const totals = {
     insurance: 0,
     tax: 0,
     spending: 0,
@@ -36,13 +41,16 @@ function getMonthTotals() {
   tips.forEach(t => {
     const d = new Date(t.time);
 
-    if (d.getMonth() === m && d.getFullYear() === y) {
-      totals.insurance += t.insurance;
-      totals.tax += t.tax;
-      totals.spending += t.spending;
-      totals.rent += t.rent;
-      totals.ira += t.ira;
-      totals.spain += t.spain;
+    if (
+      d.getMonth() === m &&
+      d.getFullYear() === y
+    ) {
+      totals.insurance += Number(t.insurance) || 0;
+      totals.tax += Number(t.tax) || 0;
+      totals.spending += Number(t.spending) || 0;
+      totals.rent += Number(t.rent) || 0;
+      totals.ira += Number(t.ira) || 0;
+      totals.spain += Number(t.spain) || 0;
     }
   });
 
@@ -52,7 +60,6 @@ function getMonthTotals() {
 
 /* ---------------- ADD TIP ---------------- */
 
-```javascript
 function addTip() {
   const input = document.getElementById("amount");
   const val = parseFloat(input.value);
@@ -61,8 +68,8 @@ function addTip() {
 
   const totals = getMonthTotals();
 
-  let entry = {
-    amount: val,
+  const entry = {
+    amount: +val.toFixed(2),
     insurance: 0,
     tax: 0,
     spending: 0,
@@ -72,122 +79,156 @@ function addTip() {
     time: new Date().toISOString()
   };
 
-  // How much each bucket still needs
+
+  /*
+    Work in cents.
+
+    This prevents rounding problems such as:
+    $224.00 becoming $223.99 and sending $0.01
+    to Spain.
+  */
+
+  const tipCents = Math.round(val * 100);
+
   const available = {};
 
-  for (let key in CAPS) {
+  for (const key in CAPS) {
+    const capCents = Math.round(CAPS[key] * 100);
+    const usedCents = Math.round((totals[key] || 0) * 100);
+
     available[key] = Math.max(
       0,
-      CAPS[key] - (totals[key] || 0)
+      capCents - usedCents
     );
   }
 
-  // Total still needed to fill all five buckets
-  const totalNeeded = Object.values(available)
+
+  const totalNeededCents = Object.values(available)
     .reduce((sum, amount) => sum + amount, 0);
 
-  // Split this tip proportionally across all unfinished buckets
-  if (totalNeeded > 0) {
-    for (let key in available) {
-      const share = available[key] / totalNeeded;
 
-      entry[key] = Math.min(
+  /*
+    We can only allocate as much as the five buckets
+    still need. Anything beyond that goes to Spain.
+  */
+
+  const amountToBuckets = Math.min(
+    tipCents,
+    totalNeededCents
+  );
+
+
+  if (amountToBuckets > 0) {
+
+    const rawShares = {};
+    const allocatedCents = {};
+
+    let allocated = 0;
+
+
+    /*
+      First give each bucket its proportional whole cents.
+    */
+
+    for (const key in available) {
+
+      if (available[key] <= 0) {
+        rawShares[key] = 0;
+        allocatedCents[key] = 0;
+        continue;
+      }
+
+      const raw =
+        amountToBuckets *
+        (available[key] / totalNeededCents);
+
+      rawShares[key] = raw;
+
+      const base = Math.min(
         available[key],
-        +(val * share).toFixed(2)
+        Math.floor(raw)
       );
+
+      allocatedCents[key] = base;
+      allocated += base;
+    }
+
+
+    /*
+      There may be a few leftover pennies because of rounding.
+      Give those pennies to the buckets with the largest
+      fractional remainder.
+    */
+
+    let penniesLeft =
+      amountToBuckets - allocated;
+
+
+    const keysByRemainder = Object.keys(available)
+      .sort((a, b) => {
+
+        const remainderA =
+          rawShares[a] -
+          Math.floor(rawShares[a] || 0);
+
+        const remainderB =
+          rawShares[b] -
+          Math.floor(rawShares[b] || 0);
+
+        return remainderB - remainderA;
+      });
+
+
+    while (penniesLeft > 0) {
+
+      let gavePenny = false;
+
+      for (const key of keysByRemainder) {
+
+        if (
+          allocatedCents[key] <
+          available[key]
+        ) {
+          allocatedCents[key]++;
+          penniesLeft--;
+          gavePenny = true;
+
+          if (penniesLeft <= 0) break;
+        }
+      }
+
+      if (!gavePenny) break;
+    }
+
+
+    /*
+      Convert cents back into dollars.
+    */
+
+    for (const key in allocatedCents) {
+      entry[key] =
+        allocatedCents[key] / 100;
     }
   }
 
-  // Add up the five bucket amounts
-  let allocated =
+
+  /*
+    Anything genuinely beyond the remaining
+    five bucket goals goes to Spain.
+  */
+
+  const allocatedToBuckets =
     entry.insurance +
     entry.tax +
     entry.spending +
     entry.rent +
     entry.ira;
 
-  // Find any rounding difference
-  let difference = +(val - allocated).toFixed(2);
 
-  // Put a rounding penny into IRA instead of Spain
-  if (difference !== 0 && totalNeeded > 0) {
-    const newIra = +(entry.ira + difference).toFixed(2);
-
-    if (
-      newIra >= 0 &&
-      newIra <= available.ira
-    ) {
-      entry.ira = newIra;
-    }
-  }
-
-  // Recalculate after the rounding adjustment
-  allocated =
-    entry.insurance +
-    entry.tax +
-    entry.spending +
-    entry.rent +
-    entry.ira;
-
-  // Spain only gets genuine money left over
   entry.spain = Math.max(
     0,
-    +(val - allocated).toFixed(2)
+    +(val - allocatedToBuckets).toFixed(2)
   );
-
-  tips.push(entry);
-
-  localStorage.setItem(
-    "tips",
-    JSON.stringify(tips)
-  );
-
-  input.value = "";
-
-  update();
-}
-```
-
-
-
-  let remainingGoals = {};
-
-  for (let key in CAPS) {
-    remainingGoals[key] = Math.max(
-      0,
-      CAPS[key] - totals[key]
-    );
-  }
-
-
-  let totalNeeded = Object.values(remainingGoals)
-    .reduce((a, b) => a + b, 0);
-
-
-  let allocated = 0;
-
-
-  if (totalNeeded > 0) {
-
-    for (let key in remainingGoals) {
-
-      let amount = val *
-        (remainingGoals[key] / totalNeeded);
-
-
-      amount = Math.min(
-        amount,
-        remainingGoals[key]
-      );
-
-
-      entry[key] = +amount.toFixed(2);
-      allocated += entry[key];
-    }
-  }
-
-
-  entry.spain = +(val - allocated).toFixed(2);
 
 
   tips.push(entry);
@@ -196,7 +237,6 @@ function addTip() {
     "tips",
     JSON.stringify(tips)
   );
-
 
   input.value = "";
 
@@ -226,10 +266,9 @@ function deleteLast() {
 function update() {
 
   const total = tips.reduce(
-    (sum, t) => sum + t.amount,
+    (sum, t) => sum + (Number(t.amount) || 0),
     0
   );
-
 
   let html = "";
 
@@ -238,15 +277,16 @@ function update() {
 
     html += `
       <div style="padding:10px;border-bottom:1px solid #eee;">
-        <b>$${t.amount.toFixed(2)}</b><br>
+
+        <b>$${(Number(t.amount) || 0).toFixed(2)}</b><br>
 
         <small>
-        Insurance: $${t.insurance.toFixed(2)} |
-        Taxes: $${t.tax.toFixed(2)} |
-        Spending: $${t.spending.toFixed(2)} |
-        Rent: $${t.rent.toFixed(2)} |
-        IRA: $${t.ira.toFixed(2)} |
-        Spain: $${t.spain.toFixed(2)}
+          Insurance: $${(Number(t.insurance) || 0).toFixed(2)} |
+          Taxes: $${(Number(t.tax) || 0).toFixed(2)} |
+          Spending: $${(Number(t.spending) || 0).toFixed(2)} |
+          Rent: $${(Number(t.rent) || 0).toFixed(2)} |
+          IRA: $${(Number(t.ira) || 0).toFixed(2)} |
+          Spain: $${(Number(t.spain) || 0).toFixed(2)}
         </small>
 
       </div>
@@ -254,9 +294,11 @@ function update() {
   });
 
 
-  const result = document.getElementById("result");
+  const result =
+    document.getElementById("result");
 
   if (result) {
+
     result.innerHTML = `
       <h2>Total: $${total.toFixed(2)}</h2>
       <hr>
@@ -279,14 +321,24 @@ function renderProgress() {
   let html = "";
 
 
-  for (let key in CAPS) {
+  for (const key in CAPS) {
 
-    const used = totals[key];
+    const used =
+      Number(totals[key]) || 0;
 
     const pct = Math.min(
       100,
       (used / CAPS[key]) * 100
     );
+
+
+    let color = "#4caf50";
+
+    if (pct > 95) {
+      color = "#e53935";
+    } else if (pct > 80) {
+      color = "#ff9800";
+    }
 
 
     html += `
@@ -295,21 +347,21 @@ function renderProgress() {
         <strong>${key}</strong>
         $${used.toFixed(2)}
         /
-        $${CAPS[key]}
+        $${CAPS[key].toFixed(2)}
 
         <div style="
           background:#eee;
           height:10px;
           border-radius:5px;
+          overflow:hidden;
         ">
 
           <div style="
             width:${pct}%;
             height:10px;
-            background:#4caf50;
+            background:${color};
             border-radius:5px;
-          ">
-          </div>
+          "></div>
 
         </div>
 
@@ -319,14 +371,15 @@ function renderProgress() {
 
 
   html += `
-    <div>
+    <div style="margin-top:16px;">
       <strong>Spain Fund</strong>
       $${totals.spain.toFixed(2)}
     </div>
   `;
 
 
-  const progress = document.getElementById("progress");
+  const progress =
+    document.getElementById("progress");
 
   if (progress) {
     progress.innerHTML = html;
@@ -338,36 +391,45 @@ function renderProgress() {
 
 function renderSpainFlow() {
 
-  const el = document.getElementById("spainFlow");
+  const el =
+    document.getElementById("spainFlow");
 
   if (!el) return;
 
 
   const totals = getMonthTotals();
 
+  const spain =
+    Math.max(0, totals.spain || 0);
+
 
   el.innerHTML = `
+    <h3 style="margin:0 0 8px 0;">
+      Spain Overflow
+    </h3>
 
-    <h3>Spain Overflow</h3>
-
-    <div>
-      Unallocated:
-      $${totals.spain.toFixed(2)}
+    <div style="
+      font-size:14px;
+      margin-bottom:6px;
+      color:#aaa;
+    ">
+      Unallocated: $${spain.toFixed(2)}
     </div>
 
     <div style="
-      background:#222;
+      background:#222838;
       height:10px;
-      border-radius:10px;
-      margin-top:8px;
+      border-radius:999px;
+      overflow:hidden;
     ">
 
-      <div style="
-        width:${Math.min(totals.spain,100)}%;
-        height:10px;
-        background:#4caf50;
-        border-radius:10px;
-      "></div>
+      <div
+        class="spain-flow-bar"
+        style="
+          width:${Math.min(100, spain)}%;
+          height:10px;
+        "
+      ></div>
 
     </div>
   `;
@@ -391,15 +453,18 @@ function bindReset() {
 
       const now = new Date();
 
+      const m = now.getMonth();
+      const y = now.getFullYear();
+
+
       tips = tips.filter(t => {
 
         const d = new Date(t.time);
 
         return !(
-          d.getMonth() === now.getMonth() &&
-          d.getFullYear() === now.getFullYear()
+          d.getMonth() === m &&
+          d.getFullYear() === y
         );
-
       });
 
 
@@ -427,7 +492,7 @@ function bindReset() {
 }
 
 
-/* ---------------- START ---------------- */
+/* ---------------- START APP ---------------- */
 
 function init() {
 
@@ -437,16 +502,21 @@ function init() {
   const sticky =
     document.getElementById("stickySaveBtn");
 
-
-  if (save) save.onclick = addTip;
-
-  if (sticky) sticky.onclick = addTip;
-
-
   const del =
     document.getElementById("deleteLast");
 
-  if (del) del.onclick = deleteLast;
+
+  if (save) {
+    save.onclick = addTip;
+  }
+
+  if (sticky) {
+    sticky.onclick = addTip;
+  }
+
+  if (del) {
+    del.onclick = deleteLast;
+  }
 
 
   bindReset();
@@ -459,3 +529,4 @@ document.addEventListener(
   "DOMContentLoaded",
   init
 );
+```
