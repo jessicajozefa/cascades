@@ -1,4 +1,4 @@
-onst CAPS = {
+const CAPS = {
   insurance: 622,
   tax: 600,
   spending: 1600,
@@ -6,23 +6,28 @@ onst CAPS = {
   ira: 200
 };
 
-let tips = JSON.parse(localStorage.getItem("tips") || "[]").map(t => ({
-  amount: Number(t.amount) || 0,
-  insurance: Number(t.insurance) || 0,
-  tax: Number(t.tax) || 0,
-  spending: Number(t.spending) || 0,
-  rent: Number(t.rent) || 0,
-  ira: Number(t.ira) || 0,
-  spain: Number(t.spain) || 0,
-  time: t.time || new Date().toISOString()
-}));
+let tips = JSON.parse(localStorage.getItem("tips") || "[]").map(function(t) {
+  return {
+    amount: Number(t.amount) || 0,
+    insurance: Number(t.insurance) || 0,
+    tax: Number(t.tax) || 0,
+    spending: Number(t.spending) || 0,
+    rent: Number(t.rent) || 0,
+    ira: Number(t.ira) || 0,
+    spain: Number(t.spain) || 0,
+    time: t.time || new Date().toISOString()
+  };
+});
+
+
+/* ---------------- MONTH TOTALS ---------------- */
 
 function getMonthTotals() {
-  const now = new Date();
-  const m = now.getMonth();
-  const y = now.getFullYear();
+  var now = new Date();
+  var m = now.getMonth();
+  var y = now.getFullYear();
 
-  const totals = {
+  var totals = {
     insurance: 0,
     tax: 0,
     spending: 0,
@@ -31,8 +36,8 @@ function getMonthTotals() {
     spain: 0
   };
 
-  tips.forEach(t => {
-    const d = new Date(t.time);
+  tips.forEach(function(t) {
+    var d = new Date(t.time);
 
     if (d.getMonth() === m && d.getFullYear() === y) {
       totals.insurance += Number(t.insurance) || 0;
@@ -47,18 +52,23 @@ function getMonthTotals() {
   return totals;
 }
 
+
+/* ---------------- ADD TIP ---------------- */
+
 function addTip() {
-  const input = document.getElementById("amount");
+  var input = document.getElementById("amount");
 
   if (!input) return;
 
-  const val = parseFloat(input.value);
+  var val = parseFloat(input.value);
 
-  if (!Number.isFinite(val) || val <= 0) return;
+  if (!Number.isFinite(val) || val <= 0) {
+    return;
+  }
 
-  const totals = getMonthTotals();
+  var totals = getMonthTotals();
 
-  const entry = {
+  var entry = {
     amount: Math.round(val * 100) / 100,
     insurance: 0,
     tax: 0,
@@ -69,32 +79,42 @@ function addTip() {
     time: new Date().toISOString()
   };
 
-  const tipCents = Math.round(val * 100);
+  /* Work entirely in cents */
+  var tipCents = Math.round(val * 100);
 
-  const available = {};
+  var available = {};
 
-  Object.keys(CAPS).forEach(key => {
-    const capCents = Math.round(CAPS[key] * 100);
-    const usedCents = Math.round((totals[key] || 0) * 100);
+  Object.keys(CAPS).forEach(function(key) {
+    var capCents = Math.round(CAPS[key] * 100);
+    var usedCents = Math.round((totals[key] || 0) * 100);
 
-    available[key] = Math.max(0, capCents - usedCents);
+    available[key] = Math.max(
+      0,
+      capCents - usedCents
+    );
   });
 
-  const totalNeeded = Object.values(available)
-    .reduce((sum, cents) => sum + cents, 0);
+  var totalNeeded = Object.keys(available).reduce(
+    function(sum, key) {
+      return sum + available[key];
+    },
+    0
+  );
 
-  const amountForBuckets = Math.min(
+  /* Amount that belongs in the five buckets */
+  var bucketCents = Math.min(
     tipCents,
     totalNeeded
   );
 
-  if (amountForBuckets > 0 && totalNeeded > 0) {
-    const raw = {};
-    const allocated = {};
+  if (bucketCents > 0 && totalNeeded > 0) {
 
-    let used = 0;
+    var raw = {};
+    var allocated = {};
+    var used = 0;
 
-    Object.keys(CAPS).forEach(key => {
+    Object.keys(CAPS).forEach(function(key) {
+
       if (available[key] <= 0) {
         raw[key] = 0;
         allocated[key] = 0;
@@ -102,39 +122,48 @@ function addTip() {
       }
 
       raw[key] =
-        amountForBuckets *
+        bucketCents *
         available[key] /
         totalNeeded;
 
       allocated[key] = Math.floor(raw[key]);
 
-      if (allocated[key] > available[key]) {
-        allocated[key] = available[key];
-      }
+      allocated[key] = Math.min(
+        allocated[key],
+        available[key]
+      );
 
       used += allocated[key];
     });
 
-    let penniesLeft = amountForBuckets - used;
+    /* Distribute leftover pennies */
+    var penniesLeft = bucketCents - used;
 
-    const order = Object.keys(CAPS).sort((a, b) => {
-      const remainderA =
-        raw[a] - Math.floor(raw[a]);
+    var order = Object.keys(CAPS).sort(
+      function(a, b) {
 
-      const remainderB =
-        raw[b] - Math.floor(raw[b]);
+        var remainderA =
+          raw[a] - Math.floor(raw[a]);
 
-      return remainderB - remainderA;
-    });
+        var remainderB =
+          raw[b] - Math.floor(raw[b]);
+
+        return remainderB - remainderA;
+      }
+    );
 
     while (penniesLeft > 0) {
-      let added = false;
 
-      for (const key of order) {
+      var gavePenny = false;
+
+      for (var i = 0; i < order.length; i++) {
+
+        var key = order[i];
+
         if (allocated[key] < available[key]) {
           allocated[key]++;
           penniesLeft--;
-          added = true;
+          gavePenny = true;
 
           if (penniesLeft === 0) {
             break;
@@ -142,24 +171,27 @@ function addTip() {
         }
       }
 
-      if (!added) break;
+      if (!gavePenny) {
+        break;
+      }
     }
 
-    Object.keys(CAPS).forEach(key => {
+    Object.keys(CAPS).forEach(function(key) {
       entry[key] = allocated[key] / 100;
     });
   }
 
-  const bucketCents =
+  /* Calculate Spain from actual cents */
+  var usedByBuckets =
     Math.round(entry.insurance * 100) +
     Math.round(entry.tax * 100) +
     Math.round(entry.spending * 100) +
     Math.round(entry.rent * 100) +
     Math.round(entry.ira * 100);
 
-  const spainCents = Math.max(
+  var spainCents = Math.max(
     0,
-    tipCents - bucketCents
+    tipCents - usedByBuckets
   );
 
   entry.spain = spainCents / 100;
@@ -176,8 +208,14 @@ function addTip() {
   update();
 }
 
+
+/* ---------------- DELETE LAST ---------------- */
+
 function deleteLast() {
-  if (tips.length === 0) return;
+
+  if (tips.length === 0) {
+    return;
+  }
 
   tips.pop();
 
@@ -189,58 +227,69 @@ function deleteLast() {
   update();
 }
 
+
+/* ---------------- DISPLAY ---------------- */
+
 function update() {
-  const total = tips.reduce(
-    (sum, t) => sum + (Number(t.amount) || 0),
+
+  var total = tips.reduce(
+    function(sum, t) {
+      return sum + (Number(t.amount) || 0);
+    },
     0
   );
 
-  let html = "";
+  var html = "";
 
-  tips.slice().reverse().forEach(t => {
-    html += `
-      <div style="padding:10px;border-bottom:1px solid #eee;">
-        <b>$${(Number(t.amount) || 0).toFixed(2)}</b><br>
-        <small>
-          Insurance: $${(Number(t.insurance) || 0).toFixed(2)} |
-          Taxes: $${(Number(t.tax) || 0).toFixed(2)} |
-          Spending: $${(Number(t.spending) || 0).toFixed(2)} |
-          Rent: $${(Number(t.rent) || 0).toFixed(2)} |
-          IRA: $${(Number(t.ira) || 0).toFixed(2)} |
-          Spain: $${(Number(t.spain) || 0).toFixed(2)}
-        </small>
-      </div>
-    `;
+  tips.slice().reverse().forEach(function(t) {
+
+    html +=
+      '<div style="padding:10px;border-bottom:1px solid #eee;">' +
+      '<b>$' + (Number(t.amount) || 0).toFixed(2) + '</b><br>' +
+      '<small>' +
+      'Insurance: $' + (Number(t.insurance) || 0).toFixed(2) + ' | ' +
+      'Taxes: $' + (Number(t.tax) || 0).toFixed(2) + ' | ' +
+      'Spending: $' + (Number(t.spending) || 0).toFixed(2) + ' | ' +
+      'Rent: $' + (Number(t.rent) || 0).toFixed(2) + ' | ' +
+      'IRA: $' + (Number(t.ira) || 0).toFixed(2) + ' | ' +
+      'Spain: $' + (Number(t.spain) || 0).toFixed(2) +
+      '</small>' +
+      '</div>';
   });
 
-  const result = document.getElementById("result");
+  var result = document.getElementById("result");
 
   if (result) {
-    result.innerHTML = `
-      <h2>Total: $${total.toFixed(2)}</h2>
-      <hr>
-      ${html || "No entries yet"}
-    `;
+
+    result.innerHTML =
+      '<h2>Total: $' + total.toFixed(2) + '</h2>' +
+      '<hr>' +
+      (html || "No entries yet");
   }
 
   renderProgress();
   renderSpainFlow();
 }
 
+
+/* ---------------- PROGRESS ---------------- */
+
 function renderProgress() {
-  const totals = getMonthTotals();
 
-  let html = "";
+  var totals = getMonthTotals();
 
-  Object.keys(CAPS).forEach(key => {
-    const used = Number(totals[key]) || 0;
+  var html = "";
 
-    const pct = Math.min(
+  Object.keys(CAPS).forEach(function(key) {
+
+    var used = Number(totals[key]) || 0;
+
+    var pct = Math.min(
       100,
       (used / CAPS[key]) * 100
     );
 
-    let color = "#4caf50";
+    var color = "#4caf50";
 
     if (pct > 95) {
       color = "#e53935";
@@ -248,93 +297,98 @@ function renderProgress() {
       color = "#ff9800";
     }
 
-    html += `
-      <div style="margin-bottom:12px;">
-        <strong>${key}</strong>
-        $${used.toFixed(2)} / $${CAPS[key].toFixed(2)}
+    html +=
+      '<div style="margin-bottom:12px;">' +
 
-        <div style="
-          background:#eee;
-          height:10px;
-          border-radius:5px;
-          overflow:hidden;
-        ">
-          <div style="
-            width:${pct}%;
-            height:10px;
-            background:${color};
-            border-radius:5px;
-          "></div>
-        </div>
-      </div>
-    `;
+      '<strong>' +
+      key +
+      '</strong> $' +
+      used.toFixed(2) +
+      ' / $' +
+      CAPS[key].toFixed(2) +
+
+      '<div style="background:#eee;height:10px;border-radius:5px;overflow:hidden;">' +
+
+      '<div style="width:' +
+      pct +
+      '%;height:10px;background:' +
+      color +
+      ';border-radius:5px;"></div>' +
+
+      '</div>' +
+
+      '</div>';
   });
 
-  html += `
-    <div style="margin-top:16px;">
-      <strong>Spain Fund</strong>
-      $${totals.spain.toFixed(2)}
-    </div>
-  `;
+  html +=
+    '<div style="margin-top:16px;">' +
+    '<strong>Spain Fund</strong> $' +
+    totals.spain.toFixed(2) +
+    '</div>';
 
-  const progress = document.getElementById("progress");
+  var progress =
+    document.getElementById("progress");
 
   if (progress) {
     progress.innerHTML = html;
   }
 }
 
+
+/* ---------------- SPAIN FLOW ---------------- */
+
 function renderSpainFlow() {
-  const el = document.getElementById("spainFlow");
 
-  if (!el) return;
+  var el =
+    document.getElementById("spainFlow");
 
-  const totals = getMonthTotals();
-  const spain = Math.max(0, totals.spain || 0);
+  if (!el) {
+    return;
+  }
 
-  el.innerHTML = `
-    <h3 style="margin:0 0 8px 0;">
-      Spain Overflow
-    </h3>
+  var totals = getMonthTotals();
 
-    <div style="
-      font-size:14px;
-      margin-bottom:6px;
-      color:#aaa;
-    ">
-      Unallocated: $${spain.toFixed(2)}
-    </div>
+  var spain =
+    Math.max(0, totals.spain || 0);
 
-    <div style="
-      background:#222838;
-      height:10px;
-      border-radius:999px;
-      overflow:hidden;
-    ">
-      <div
-        class="spain-flow-bar"
-        style="
-          width:${Math.min(100, spain)}%;
-          height:10px;
-        "
-      ></div>
-    </div>
-  `;
+  el.innerHTML =
+    '<h3 style="margin:0 0 8px 0;">Spain Overflow</h3>' +
+
+    '<div style="font-size:14px;margin-bottom:6px;color:#aaa;">' +
+    'Unallocated: $' +
+    spain.toFixed(2) +
+    '</div>' +
+
+    '<div style="background:#222838;height:10px;border-radius:999px;overflow:hidden;">' +
+
+    '<div class="spain-flow-bar" style="width:' +
+    Math.min(100, spain) +
+    '%;height:10px;"></div>' +
+
+    '</div>';
 }
 
+
+/* ---------------- RESET ---------------- */
+
 function bindReset() {
-  const monthBtn =
+
+  var monthBtn =
     document.getElementById("resetMonth");
 
-  const allBtn =
+  var allBtn =
     document.getElementById("resetAll");
 
-  if (monthBtn) {
-    monthBtn.onclick = () => {
-      const now = new Date();
 
-      tips = tips.filter(t => {
-        const d = new Date(t.time);
+  if (monthBtn) {
+
+    monthBtn.onclick = function() {
+
+      var now = new Date();
+
+      tips = tips.filter(function(t) {
+
+        var d = new Date(t.time);
 
         return !(
           d.getMonth() === now.getMonth() &&
@@ -351,8 +405,11 @@ function bindReset() {
     };
   }
 
+
   if (allBtn) {
-    allBtn.onclick = () => {
+
+    allBtn.onclick = function() {
+
       tips = [];
 
       localStorage.removeItem("tips");
@@ -362,15 +419,20 @@ function bindReset() {
   }
 }
 
+
+/* ---------------- START ---------------- */
+
 function init() {
-  const save =
+
+  var save =
     document.getElementById("saveBtn");
 
-  const sticky =
+  var sticky =
     document.getElementById("stickySaveBtn");
 
-  const del =
+  var del =
     document.getElementById("deleteLast");
+
 
   if (save) {
     save.onclick = addTip;
@@ -385,8 +447,10 @@ function init() {
   }
 
   bindReset();
+
   update();
 }
+
 
 document.addEventListener(
   "DOMContentLoaded",
