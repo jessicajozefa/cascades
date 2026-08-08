@@ -52,16 +52,14 @@ function getMonthTotals() {
 
 /* ---------------- ADD TIP ---------------- */
 
+```javascript
 function addTip() {
-
   const input = document.getElementById("amount");
   const val = parseFloat(input.value);
 
-  if (isNaN(val)) return;
-
+  if (isNaN(val) || val <= 0) return;
 
   const totals = getMonthTotals();
-
 
   let entry = {
     amount: val,
@@ -73,6 +71,83 @@ function addTip() {
     spain: 0,
     time: new Date().toISOString()
   };
+
+  // How much each bucket still needs
+  const available = {};
+
+  for (let key in CAPS) {
+    available[key] = Math.max(
+      0,
+      CAPS[key] - (totals[key] || 0)
+    );
+  }
+
+  // Total still needed to fill all five buckets
+  const totalNeeded = Object.values(available)
+    .reduce((sum, amount) => sum + amount, 0);
+
+  // Split this tip proportionally across all unfinished buckets
+  if (totalNeeded > 0) {
+    for (let key in available) {
+      const share = available[key] / totalNeeded;
+
+      entry[key] = Math.min(
+        available[key],
+        +(val * share).toFixed(2)
+      );
+    }
+  }
+
+  // Add up the five bucket amounts
+  let allocated =
+    entry.insurance +
+    entry.tax +
+    entry.spending +
+    entry.rent +
+    entry.ira;
+
+  // Find any rounding difference
+  let difference = +(val - allocated).toFixed(2);
+
+  // Put a rounding penny into IRA instead of Spain
+  if (difference !== 0 && totalNeeded > 0) {
+    const newIra = +(entry.ira + difference).toFixed(2);
+
+    if (
+      newIra >= 0 &&
+      newIra <= available.ira
+    ) {
+      entry.ira = newIra;
+    }
+  }
+
+  // Recalculate after the rounding adjustment
+  allocated =
+    entry.insurance +
+    entry.tax +
+    entry.spending +
+    entry.rent +
+    entry.ira;
+
+  // Spain only gets genuine money left over
+  entry.spain = Math.max(
+    0,
+    +(val - allocated).toFixed(2)
+  );
+
+  tips.push(entry);
+
+  localStorage.setItem(
+    "tips",
+    JSON.stringify(tips)
+  );
+
+  input.value = "";
+
+  update();
+}
+```
+
 
 
   let remainingGoals = {};
